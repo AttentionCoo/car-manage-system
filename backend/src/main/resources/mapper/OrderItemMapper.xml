@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.carmanage.mapper.OrderItemMapper">
+    <select id="selectByOrderId" resultType="com.carmanage.entity.OrderItem">
+        SELECT oi.*, bi.item_name FROM order_items oi
+        LEFT JOIN beauty_items bi ON oi.item_id = bi.id
+        WHERE oi.order_id = #{orderId}
+    </select>
+</mapper>

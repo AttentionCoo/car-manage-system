@@ -1,0 +1,15 @@
+# IDE
+.idea/
+
+# Maven
+target/
+
+# Node
+node_modules/
+dist/
+
+# 日志
+*.log
+
+# 临时文件
+*.tmp

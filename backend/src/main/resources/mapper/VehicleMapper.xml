@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.carmanage.mapper.VehicleMapper">
+    <select id="selectPageWithCondition" resultType="com.carmanage.entity.Vehicle">
+        SELECT v.*, c.name AS customer_name FROM vehicles v
+        LEFT JOIN customers c ON v.customer_id = c.id
+        WHERE v.is_deleted = 0
+        <if test="customerId != null">
+            AND v.customer_id = #{customerId}
+        </if>
+        <if test="plateNumber != null and plateNumber != ''">
+            AND v.plate_number LIKE CONCAT('%', #{plateNumber}, '%')
+        </if>
+        <if test="brand != null and brand != ''">
+            AND v.brand LIKE CONCAT('%', #{brand}, '%')
+        </if>
+        ORDER BY v.create_time DESC
+    </select>
+    <select id="selectByCustomerId" resultType="com.carmanage.entity.Vehicle">
+        SELECT * FROM vehicles WHERE customer_id = #{customerId} AND is_deleted = 0
+    </select>
+</mapper>
