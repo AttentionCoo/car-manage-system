@@ -109,37 +109,55 @@
       </el-table>
       <h4 v-if="detailData.payment" style="margin-top: 16px;">支付信息</h4>
       <el-descriptions v-if="detailData.payment" :column="2" border>
-        <el-descriptions-item label="支付方式">{{ paymentMethodMap[detailData.payment.paymentMethod] }}</el-descriptions-item>
-        <el-descriptions-item label="实付金额">¥{{ Number(detailData.payment.paidAmount).toFixed(2) }}</el-descriptions-item>
+        <el-descriptions-item label="支付方式">{{ paymentMethodMap[detailData.payment.paymentMethod] || detailData.payment.paymentMethod }}</el-descriptions-item>
+        <el-descriptions-item label="支付流水号">{{ detailData.payment.paymentNo }}</el-descriptions-item>
+        <el-descriptions-item label="折扣金额">¥{{ Number(detailData.payment.discountAmount || 0).toFixed(2) }}</el-descriptions-item>
+        <el-descriptions-item label="实付金额">¥{{ Number(detailData.payment.paidAmount || 0).toFixed(2) }}</el-descriptions-item>
+        <el-descriptions-item v-if="detailData.payment.changeAmount > 0" label="找零">¥{{ Number(detailData.payment.changeAmount).toFixed(2) }}</el-descriptions-item>
         <el-descriptions-item label="支付时间">{{ detailData.payment.payTime }}</el-descriptions-item>
+        <el-descriptions-item v-if="detailData.payment.remark" label="备注">{{ detailData.payment.remark }}</el-descriptions-item>
       </el-descriptions>
     </el-dialog>
 
     <!-- 收款弹窗 -->
-    <el-dialog v-model="payVisible" title="订单收款" width="450px">
+    <el-dialog v-model="payVisible" title="订单收款" width="480px">
       <el-form :model="payForm" label-width="100px">
-        <el-form-item label="应付金额"><span style="font-size: 18px; font-weight: bold;">¥{{ currentRow ? Number(currentRow.payableAmount || 0).toFixed(2) : '0.00' }}</span></el-form-item>
-        <el-form-item label="折扣金额"><el-input-number v-model="payForm.discountAmount" :min="0" :precision="2" /></el-form-item>
+        <el-form-item label="订单总金额">
+          <span style="font-size: 16px;">¥{{ currentRow ? Number(currentRow.totalAmount || 0).toFixed(2) : '0.00' }}</span>
+        </el-form-item>
+        <el-form-item label="折扣金额">
+          <el-input-number v-model="payForm.discountAmount" :min="0" :max="currentRow ? Number(currentRow.totalAmount || 0) : 0" :precision="2" style="width: 200px;" />
+        </el-form-item>
+        <el-form-item label="应付金额">
+          <span style="font-size: 18px; font-weight: bold; color: #e6a23c;">¥{{ payableAfterDiscount.toFixed(2) }}</span>
+        </el-form-item>
         <el-form-item label="支付方式">
-          <el-radio-group v-model="payForm.paymentMethod">
+          <el-radio-group v-model="payForm.paymentMethod" @change="onPaymentMethodChange">
             <el-radio value="CASH">现金</el-radio>
             <el-radio value="WECHAT">微信</el-radio>
             <el-radio value="ALIPAY">支付宝</el-radio>
             <el-radio value="CARD">刷卡</el-radio>
           </el-radio-group>
         </el-form-item>
+        <el-form-item label="实收金额">
+          <el-input-number v-model="payForm.paidAmount" :min="0" :precision="2" :disabled="payForm.paymentMethod !== 'CASH'" style="width: 200px;" />
+          <span v-if="payForm.paymentMethod !== 'CASH'" style="margin-left: 8px; color: #909399; font-size: 12px;">电子支付自动填写</span>
+        </el-form-item>
+        <el-form-item v-if="payForm.paymentMethod === 'CASH' && payForm.paidAmount > payableAfterDiscount" label="找零">
+          <span style="font-size: 18px; font-weight: bold; color: #67c23a;">¥{{ (payForm.paidAmount - payableAfterDiscount).toFixed(2) }}</span>
+        </el-form-item>
         <el-form-item label="备注"><el-input v-model="payForm.remark" /></el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="payVisible = false">取消</el-button>
-        <el-button type="success" @click="handlePay">确认收款</el-button>
+        <el-button type="success" @click="handlePay" :disabled="payForm.paidAmount < payableAfterDiscount">确认收款</el-button>
       </template>
     </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getOrderList, createOrder, updateOrderStatus, payOrder, cancelOrder, getOrderDetail } from '../api/order'
 import { getCustomerList } from '../api/customer'
@@ -174,7 +192,22 @@ const createForm = reactive({
   appointmentTime: null, remark: ''
 })
 
-const payForm = reactive({ discountAmount: 0, paymentMethod: 'CASH', remark: '' })
+const payForm = reactive({ discountAmount: 0, paidAmount: 0, paymentMethod: 'CASH', remark: '' })
+
+// 折扣后应付金额
+const payableAfterDiscount = computed(() => {
+  if (!currentRow.value) return 0
+  const total = Number(currentRow.value.totalAmount || 0)
+  const discount = Number(payForm.discountAmount || 0)
+  return Math.max(0, total - discount)
+})
+
+// 支付方式切换：电子支付自动填充实收金额
+const onPaymentMethodChange = (method) => {
+  if (method !== 'CASH') {
+    payForm.paidAmount = payableAfterDiscount.value
+  }
+}
 
 const loadData = async () => {
   const res = await getOrderList({ page: page.value, pageSize: pageSize.value, ...search })
@@ -240,13 +273,23 @@ const handleStartWork = (row) => {
 
 const openPayDialog = (row) => {
   currentRow.value = row
-  Object.assign(payForm, { discountAmount: 0, paymentMethod: 'CASH', remark: '' })
+  const total = Number(row.totalAmount || 0)
+  Object.assign(payForm, { discountAmount: 0, paidAmount: total, paymentMethod: 'CASH', remark: '' })
   payVisible.value = true
 }
 
 const handlePay = async () => {
+  if (payForm.paidAmount < payableAfterDiscount.value) {
+    ElMessage.warning('实收金额不足，请核对')
+    return
+  }
   payForm.discountAmount = payForm.discountAmount || 0
-  await payOrder(currentRow.value.id, payForm)
+  await payOrder(currentRow.value.id, {
+    discountAmount: payForm.discountAmount,
+    paidAmount: payForm.paidAmount,
+    paymentMethod: payForm.paymentMethod,
+    remark: payForm.remark
+  })
   ElMessage.success('收款成功')
   payVisible.value = false
   loadData()

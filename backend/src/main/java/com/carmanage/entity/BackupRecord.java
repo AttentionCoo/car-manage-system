@@ -22,5 +22,10 @@ public class BackupRecord implements Serializable {
     private String creator;
     private String description;
     private String md5Checksum;
+    @TableLogic
+    private Integer isDeleted;
+    @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;
+    @TableField(fill = FieldFill.INSERT_UPDATE)
+    private LocalDateTime updateTime;
 }

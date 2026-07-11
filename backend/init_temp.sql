@@ -1,144 +1,162 @@
--- �������ݵ����ϵͳ���ݿ��ʼ���ű�
+-- 汽车美容店管理系统数据库初始化脚本
 CREATE DATABASE IF NOT EXISTS car_beauty DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE car_beauty;
 
--- �ͻ���
+-- 客户表
 CREATE TABLE customers (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '�ͻ�ID',
-    name VARCHAR(50) NOT NULL COMMENT '����',
-    gender VARCHAR(10) NOT NULL COMMENT '�Ա�',
-    phone VARCHAR(11) NOT NULL UNIQUE COMMENT '�ֻ���',
-    id_card VARCHAR(18) COMMENT '����֤��',
-    address VARCHAR(200) COMMENT '��ַ',
-    email VARCHAR(100) COMMENT '����',
-    remark VARCHAR(500) COMMENT '��ע',
-    is_deleted TINYINT DEFAULT 0 COMMENT '�߼�ɾ�� 0-���� 1-��ɾ��',
-    create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '����ʱ��',
-    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '����ʱ��'
-) ENGINE=InnoDB COMMENT='�ͻ���Ϣ��';
+    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '客户ID',
+    name VARCHAR(50) NOT NULL COMMENT '姓名',
+    gender VARCHAR(10) NOT NULL COMMENT '性别',
+    phone VARCHAR(11) NOT NULL UNIQUE COMMENT '手机号',
+    id_card VARCHAR(18) COMMENT '身份证号',
+    address VARCHAR(200) COMMENT '地址',
+    email VARCHAR(100) COMMENT '邮箱',
+    remark VARCHAR(500) COMMENT '备注',
+    is_deleted TINYINT DEFAULT 0 COMMENT '逻辑删除 0-正常 1-已删除',
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='客户信息表';
 
--- �Ա�Լ��������7��
-ALTER TABLE customers ADD CONSTRAINT chk_gender CHECK (gender IN ('��', 'Ů'));
+ALTER TABLE customers ADD CONSTRAINT chk_gender CHECK (gender IN ('男', '女'));
 
 CREATE INDEX idx_customers_phone ON customers(phone);
 
--- ������
+-- 车辆表
 CREATE TABLE vehicles (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '����ID',
-    customer_id BIGINT NOT NULL COMMENT '�ͻ�ID',
-    plate_number VARCHAR(20) NOT NULL UNIQUE COMMENT '���ƺ�',
-    vin VARCHAR(17) COMMENT '���ܺ�',
-    brand VARCHAR(50) NOT NULL COMMENT 'Ʒ��',
-    model VARCHAR(50) COMMENT '�ͺ�',
-    color VARCHAR(20) COMMENT '��ɫ',
-    year INT COMMENT '���',
-    engine_number VARCHAR(30) COMMENT '��������',
-    register_date DATE COMMENT 'ע������',
-    is_deleted TINYINT DEFAULT 0,
-    create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
-    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB COMMENT='������Ϣ��';
+    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '车辆ID',
+    customer_id BIGINT NOT NULL COMMENT '客户ID',
+    plate_number VARCHAR(20) NOT NULL UNIQUE COMMENT '车牌号',
+    vin VARCHAR(17) COMMENT '车架号',
+    brand VARCHAR(50) NOT NULL COMMENT '品牌',
+    model VARCHAR(50) COMMENT '型号',
+    color VARCHAR(20) COMMENT '颜色',
+    year INT COMMENT '年份',
+    engine_number VARCHAR(30) COMMENT '发动机号',
+    register_date DATE COMMENT '注册日期',
+    is_deleted TINYINT DEFAULT 0 COMMENT '逻辑删除 0-正常 1-已删除',
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    CONSTRAINT fk_vehicles_customer FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='车辆信息表';
 
 CREATE INDEX idx_vehicles_customer_id ON vehicles(customer_id);
 CREATE INDEX idx_vehicles_plate_number ON vehicles(plate_number);
 
--- ������Ŀ��
+-- 美容项目表
 CREATE TABLE beauty_items (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '��ĿID',
-    item_name VARCHAR(50) NOT NULL COMMENT '��Ŀ����',
-    item_code VARCHAR(20) NOT NULL UNIQUE COMMENT '��Ŀ����',
-    price DECIMAL(10,2) NOT NULL COMMENT '�۸�',
-    duration INT COMMENT 'ʱ��(����)',
-    description VARCHAR(200) COMMENT '����',
-    status TINYINT DEFAULT 1 COMMENT '״̬ 0-ͣ�� 1-����',
-    is_deleted TINYINT DEFAULT 0,
-    create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
-    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB COMMENT='������Ŀ��';
+    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '项目ID',
+    item_name VARCHAR(50) NOT NULL COMMENT '项目名称',
+    item_code VARCHAR(20) NOT NULL UNIQUE COMMENT '项目编码',
+    price DECIMAL(10,2) NOT NULL COMMENT '价格',
+    duration INT COMMENT '时长(分钟)',
+    description VARCHAR(200) COMMENT '描述',
+    status TINYINT DEFAULT 1 COMMENT '状态 0-停用 1-启用',
+    is_deleted TINYINT DEFAULT 0 COMMENT '逻辑删除 0-正常 1-已删除',
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='美容项目表';
 
 CREATE INDEX idx_beauty_items_code ON beauty_items(item_code);
+CREATE INDEX idx_beauty_items_status ON beauty_items(status);
 
--- ���ݶ�����
+-- 美容订单表
 CREATE TABLE beauty_orders (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '����ID',
-    order_no VARCHAR(32) NOT NULL UNIQUE COMMENT '������',
-    customer_id BIGINT NOT NULL COMMENT '�ͻ�ID',
-    vehicle_id BIGINT NOT NULL COMMENT '����ID',
-    total_amount DECIMAL(10,2) DEFAULT 0 COMMENT '�ܽ��',
-    discount_amount DECIMAL(10,2) DEFAULT 0 COMMENT '�ۿ۽��',
-    payable_amount DECIMAL(10,2) DEFAULT 0 COMMENT 'Ӧ�����',
-    status VARCHAR(20) DEFAULT 'PENDING' COMMENT '״̬ PENDING/IN_PROGRESS/COMPLETED/CANCELLED/PAID',
-    appointment_time DATETIME COMMENT 'ԤԼʱ��',
-    order_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '�µ�ʱ��',
-    complete_time DATETIME COMMENT '���ʱ��',
-    remark VARCHAR(500) COMMENT '��ע',
-    is_deleted TINYINT DEFAULT 0,
-    create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
-    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB COMMENT='���ݶ�����';
+    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '订单ID',
+    order_no VARCHAR(32) NOT NULL UNIQUE COMMENT '订单号',
+    customer_id BIGINT NOT NULL COMMENT '客户ID',
+    vehicle_id BIGINT NOT NULL COMMENT '车辆ID',
+    total_amount DECIMAL(10,2) DEFAULT 0 COMMENT '总金额',
+    discount_amount DECIMAL(10,2) DEFAULT 0 COMMENT '折扣金额',
+    payable_amount DECIMAL(10,2) DEFAULT 0 COMMENT '应付金额',
+    status VARCHAR(20) DEFAULT 'PENDING' COMMENT '状态 PENDING-待处理 IN_PROGRESS-进行中 COMPLETED-已完成 CANCELLED-已取消 PAID-已支付',
+    appointment_time DATETIME COMMENT '预约时间',
+    order_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '下单时间',
+    complete_time DATETIME COMMENT '完成时间',
+    remark VARCHAR(500) COMMENT '备注',
+    is_deleted TINYINT DEFAULT 0 COMMENT '逻辑删除 0-正常 1-已删除',
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    CONSTRAINT fk_orders_customer FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_orders_vehicle FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='美容订单表';
 
 CREATE INDEX idx_orders_customer ON beauty_orders(customer_id, order_time);
 CREATE INDEX idx_orders_order_no ON beauty_orders(order_no);
 CREATE INDEX idx_orders_status ON beauty_orders(status);
+CREATE INDEX idx_orders_vehicle ON beauty_orders(vehicle_id);
 
--- ������ϸ��
+-- 订单明细表
 CREATE TABLE order_items (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    order_id BIGINT NOT NULL COMMENT '����ID',
-    item_id BIGINT NOT NULL COMMENT '��ĿID',
-    quantity INT DEFAULT 1 COMMENT '����',
-    unit_price DECIMAL(10,2) NOT NULL COMMENT '����',
-    subtotal DECIMAL(10,2) NOT NULL COMMENT 'С��',
-    create_time DATETIME DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB COMMENT='������ϸ��';
+    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '明细ID',
+    order_id BIGINT NOT NULL COMMENT '订单ID',
+    item_id BIGINT NOT NULL COMMENT '项目ID',
+    quantity INT DEFAULT 1 COMMENT '数量',
+    unit_price DECIMAL(10,2) NOT NULL COMMENT '单价',
+    subtotal DECIMAL(10,2) NOT NULL COMMENT '小计',
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    CONSTRAINT fk_order_items_order FOREIGN KEY (order_id) REFERENCES beauty_orders(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT fk_order_items_item FOREIGN KEY (item_id) REFERENCES beauty_items(id) ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='订单明细表';
 
 CREATE INDEX idx_order_items_order ON order_items(order_id);
 CREATE INDEX idx_order_items_item ON order_items(item_id);
 
--- ֧����¼��
+-- 支付记录表
 CREATE TABLE payments (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    order_id BIGINT NOT NULL COMMENT '����ID',
-    payment_no VARCHAR(32) NOT NULL UNIQUE COMMENT '֧����ˮ��',
-    total_amount DECIMAL(10,2) NOT NULL COMMENT '�ܽ��',
-    discount_amount DECIMAL(10,2) DEFAULT 0 COMMENT '�ۿ۽��',
-    paid_amount DECIMAL(10,2) NOT NULL COMMENT 'ʵ�����',
-    change_amount DECIMAL(10,2) DEFAULT 0 COMMENT '����',
-    payment_method VARCHAR(20) NOT NULL COMMENT '֧����ʽ CASH/WECHAT/ALIPAY/CARD/OTHER',
-    pay_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '֧��ʱ��',
-    remark VARCHAR(200) COMMENT '��ע',
-    create_time DATETIME DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB COMMENT='֧����¼��';
+    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '支付ID',
+    order_id BIGINT NOT NULL COMMENT '订单ID',
+    payment_no VARCHAR(32) NOT NULL UNIQUE COMMENT '支付流水号',
+    total_amount DECIMAL(10,2) NOT NULL COMMENT '总金额',
+    discount_amount DECIMAL(10,2) DEFAULT 0 COMMENT '折扣金额',
+    paid_amount DECIMAL(10,2) NOT NULL COMMENT '实付金额',
+    change_amount DECIMAL(10,2) DEFAULT 0 COMMENT '找零',
+    payment_method VARCHAR(20) NOT NULL COMMENT '支付方式 CASH-现金 WECHAT-微信 ALIPAY-支付宝 CARD-银行卡 OTHER-其他',
+    pay_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '支付时间',
+    remark VARCHAR(200) COMMENT '备注',
+    is_deleted TINYINT DEFAULT 0 COMMENT '逻辑删除 0-正常 1-已删除',
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    CONSTRAINT fk_payments_order FOREIGN KEY (order_id) REFERENCES beauty_orders(id) ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='支付记录表';
 
 CREATE INDEX idx_payments_order ON payments(order_id);
+CREATE INDEX idx_payments_payment_no ON payments(payment_no);
+CREATE INDEX idx_payments_pay_time ON payments(pay_time);
 
--- ���ݼ�¼��
+-- 备份记录表
 CREATE TABLE backup_records (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    backup_id VARCHAR(32) NOT NULL UNIQUE COMMENT '����ID',
-    backup_type VARCHAR(20) NOT NULL COMMENT '�������� FULL/INCREMENTAL/PARTIAL',
-    file_name VARCHAR(100) NOT NULL COMMENT '�ļ���',
-    file_path VARCHAR(255) NOT NULL COMMENT '�ļ�·��',
-    file_size BIGINT COMMENT '�ļ���С',
-    status VARCHAR(20) DEFAULT 'PENDING' COMMENT '״̬ PENDING/IN_PROGRESS/COMPLETED/FAILED/DELETED',
-    tables TEXT COMMENT '���ݵı��б�(JSON)',
-    start_time DATETIME COMMENT '��ʼʱ��',
-    end_time DATETIME COMMENT '����ʱ��',
-    creator VARCHAR(50) COMMENT '������',
-    description VARCHAR(200) COMMENT '����',
-    md5_checksum VARCHAR(64) COMMENT 'MD5У��ֵ',
-    create_time DATETIME DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB COMMENT='���ݼ�¼��';
+    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '备份ID',
+    backup_id VARCHAR(32) NOT NULL UNIQUE COMMENT '备份编号',
+    backup_type VARCHAR(20) NOT NULL COMMENT '备份类型 FULL-全量 INCREMENTAL-增量 PARTIAL-部分',
+    file_name VARCHAR(100) NOT NULL COMMENT '文件名',
+    file_path VARCHAR(255) NOT NULL COMMENT '文件路径',
+    file_size BIGINT COMMENT '文件大小(字节)',
+    status VARCHAR(20) DEFAULT 'PENDING' COMMENT '状态 PENDING-待处理 IN_PROGRESS-进行中 COMPLETED-已完成 FAILED-失败 DELETED-已删除',
+    tables TEXT COMMENT '备份的表列表(JSON)',
+    start_time DATETIME COMMENT '开始时间',
+    end_time DATETIME COMMENT '结束时间',
+    creator VARCHAR(50) COMMENT '操作人',
+    description VARCHAR(200) COMMENT '描述',
+    md5_checksum VARCHAR(64) COMMENT 'MD5校验值',
+    is_deleted TINYINT DEFAULT 0 COMMENT '逻辑删除 0-正常 1-已删除',
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='备份记录表';
 
--- �����������
+CREATE INDEX idx_backup_records_backup_id ON backup_records(backup_id);
+CREATE INDEX idx_backup_records_status ON backup_records(status);
+CREATE INDEX idx_backup_records_create_time ON backup_records(create_time);
+
+-- 插入测试数据
 INSERT INTO beauty_items (item_name, item_code, price, duration, description) VALUES
-('ȫ������', 'DM001', 298.00, 60, 'ʹ�ý��ڳ�����ȫ�����׹����'),
-('������ϴ', 'QN001', 388.00, 90, '�����ϴ�������Ρ��Ǳ��̵�'),
-('������Ĥ', 'BL001', 588.00, 120, 'ǰ���粣�����ര��Ĥ'),
-('����������ϴ', 'FD001', 268.00, 45, '�����������������'),
-('��챷���', 'LG001', 358.00, 90, '�������׹⴦��');
+('全车打蜡', 'DM001', 298.00, 60, '使用进口车蜡，全车身抛光打蜡'),
+('内饰清洗', 'QN001', 388.00, 90, '深度清洗车内座椅、仪表盘等'),
+('玻璃镀膜', 'BL001', 588.00, 120, '前挡风玻璃及侧窗镀膜'),
+('发动机舱清洗', 'FD001', 268.00, 45, '发动机舱深度清洁除油'),
+('轮毂翻新', 'LG001', 358.00, 90, '轮毂清洁抛光处理');
 
 INSERT INTO customers (name, gender, phone, id_card, address, email) VALUES
-('����', '��', '13800138001', '110101199001011234', '�����г�����xxx·1��', 'zhangsan@test.com'),
-('����', 'Ů', '13900139002', '110101199205055678', '�Ϻ����ֶ�����xxx·2��', 'lisi@test.com'),
-('����', '��', '13700137003', '110101198803033456', '�����������xxx·3��', 'wangwu@test.com');
+('张三', '男', '13800138001', '110101199001011234', '北京市朝阳区xxx路1号', 'zhangsan@test.com'),
+('李四', '女', '13900139002', '110101199205055678', '上海市浦东新区xxx路2号', 'lisi@test.com'),
+('王五', '男', '13700137003', '110101198803033456', '广州市天河区xxx路3号', 'wangwu@test.com');

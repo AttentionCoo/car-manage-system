@@ -13,4 +13,6 @@ public interface BeautyOrderMapper extends BaseMapper<BeautyOrder> {
                                                @Param("orderNo") String orderNo,
                                                @Param("customerId") Long customerId,
                                                @Param("status") String status);
+
+    BeautyOrder selectDetailById(@Param("orderId") Long orderId);
 }

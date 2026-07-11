@@ -20,5 +20,10 @@ public class Payment implements Serializable {
     private String paymentMethod;
     private LocalDateTime payTime;
     private String remark;
+    @TableLogic
+    private Integer isDeleted;
+    @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;
+    @TableField(fill = FieldFill.INSERT_UPDATE)
+    private LocalDateTime updateTime;
 }

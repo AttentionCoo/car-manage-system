@@ -70,4 +70,9 @@ public class CustomerController {
     public Result<Boolean> checkPhone(@RequestParam String phone, @RequestParam(required = false) Long excludeId) {
         return Result.success(customerService.checkPhone(phone, excludeId));
     }
+
+    @GetMapping("/{customerId}/vehicles")
+    public Result<List<Vehicle>> getVehiclesByCustomer(@PathVariable Long customerId) {
+        return Result.success(vehicleService.getByCustomerId(customerId));
+    }
 }

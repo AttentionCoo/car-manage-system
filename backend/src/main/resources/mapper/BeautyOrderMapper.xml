@@ -18,4 +18,12 @@
         </if>
         ORDER BY o.create_time DESC
     </select>
+
+    <select id="selectDetailById" resultType="com.carmanage.entity.BeautyOrder">
+        SELECT o.*, c.name AS customer_name, c.phone AS customer_phone, v.plate_number
+        FROM beauty_orders o
+        LEFT JOIN customers c ON o.customer_id = c.id
+        LEFT JOIN vehicles v ON o.vehicle_id = v.id
+        WHERE o.id = #{orderId} AND o.is_deleted = 0
+    </select>
 </mapper>

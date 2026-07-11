@@ -15,9 +15,8 @@ CREATE TABLE customers (
     is_deleted TINYINT DEFAULT 0 COMMENT '逻辑删除 0-正常 1-已删除',
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间'
-) ENGINE=InnoDB COMMENT='客户信息表';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='客户信息表';
 
--- 性别约束（需求7）
 ALTER TABLE customers ADD CONSTRAINT chk_gender CHECK (gender IN ('男', '女'));
 
 CREATE INDEX idx_customers_phone ON customers(phone);
@@ -34,10 +33,11 @@ CREATE TABLE vehicles (
     year INT COMMENT '年份',
     engine_number VARCHAR(30) COMMENT '发动机号',
     register_date DATE COMMENT '注册日期',
-    is_deleted TINYINT DEFAULT 0,
-    create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
-    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB COMMENT='车辆信息表';
+    is_deleted TINYINT DEFAULT 0 COMMENT '逻辑删除 0-正常 1-已删除',
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    CONSTRAINT fk_vehicles_customer FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='车辆信息表';
 
 CREATE INDEX idx_vehicles_customer_id ON vehicles(customer_id);
 CREATE INDEX idx_vehicles_plate_number ON vehicles(plate_number);
@@ -51,12 +51,13 @@ CREATE TABLE beauty_items (
     duration INT COMMENT '时长(分钟)',
     description VARCHAR(200) COMMENT '描述',
     status TINYINT DEFAULT 1 COMMENT '状态 0-停用 1-启用',
-    is_deleted TINYINT DEFAULT 0,
-    create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
-    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB COMMENT='美容项目表';
+    is_deleted TINYINT DEFAULT 0 COMMENT '逻辑删除 0-正常 1-已删除',
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='美容项目表';
 
 CREATE INDEX idx_beauty_items_code ON beauty_items(item_code);
+CREATE INDEX idx_beauty_items_status ON beauty_items(status);
 
 -- 美容订单表
 CREATE TABLE beauty_orders (
@@ -67,68 +68,85 @@ CREATE TABLE beauty_orders (
     total_amount DECIMAL(10,2) DEFAULT 0 COMMENT '总金额',
     discount_amount DECIMAL(10,2) DEFAULT 0 COMMENT '折扣金额',
     payable_amount DECIMAL(10,2) DEFAULT 0 COMMENT '应付金额',
-    status VARCHAR(20) DEFAULT 'PENDING' COMMENT '状态 PENDING/IN_PROGRESS/COMPLETED/CANCELLED/PAID',
+    status VARCHAR(20) DEFAULT 'PENDING' COMMENT '状态 PENDING-待处理 IN_PROGRESS-进行中 COMPLETED-已完成 CANCELLED-已取消 PAID-已支付',
     appointment_time DATETIME COMMENT '预约时间',
     order_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '下单时间',
     complete_time DATETIME COMMENT '完成时间',
     remark VARCHAR(500) COMMENT '备注',
-    is_deleted TINYINT DEFAULT 0,
-    create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
-    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB COMMENT='美容订单表';
+    is_deleted TINYINT DEFAULT 0 COMMENT '逻辑删除 0-正常 1-已删除',
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    CONSTRAINT fk_orders_customer FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_orders_vehicle FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='美容订单表';
 
 CREATE INDEX idx_orders_customer ON beauty_orders(customer_id, order_time);
 CREATE INDEX idx_orders_order_no ON beauty_orders(order_no);
 CREATE INDEX idx_orders_status ON beauty_orders(status);
+CREATE INDEX idx_orders_vehicle ON beauty_orders(vehicle_id);
 
 -- 订单明细表
 CREATE TABLE order_items (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '明细ID',
     order_id BIGINT NOT NULL COMMENT '订单ID',
     item_id BIGINT NOT NULL COMMENT '项目ID',
     quantity INT DEFAULT 1 COMMENT '数量',
     unit_price DECIMAL(10,2) NOT NULL COMMENT '单价',
     subtotal DECIMAL(10,2) NOT NULL COMMENT '小计',
-    create_time DATETIME DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB COMMENT='订单明细表';
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    CONSTRAINT fk_order_items_order FOREIGN KEY (order_id) REFERENCES beauty_orders(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT fk_order_items_item FOREIGN KEY (item_id) REFERENCES beauty_items(id) ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='订单明细表';
 
 CREATE INDEX idx_order_items_order ON order_items(order_id);
 CREATE INDEX idx_order_items_item ON order_items(item_id);
 
 -- 支付记录表
 CREATE TABLE payments (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '支付ID',
     order_id BIGINT NOT NULL COMMENT '订单ID',
     payment_no VARCHAR(32) NOT NULL UNIQUE COMMENT '支付流水号',
     total_amount DECIMAL(10,2) NOT NULL COMMENT '总金额',
     discount_amount DECIMAL(10,2) DEFAULT 0 COMMENT '折扣金额',
     paid_amount DECIMAL(10,2) NOT NULL COMMENT '实付金额',
     change_amount DECIMAL(10,2) DEFAULT 0 COMMENT '找零',
-    payment_method VARCHAR(20) NOT NULL COMMENT '支付方式 CASH/WECHAT/ALIPAY/CARD/OTHER',
+    payment_method VARCHAR(20) NOT NULL COMMENT '支付方式 CASH-现金 WECHAT-微信 ALIPAY-支付宝 CARD-银行卡 OTHER-其他',
     pay_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '支付时间',
     remark VARCHAR(200) COMMENT '备注',
-    create_time DATETIME DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB COMMENT='支付记录表';
+    is_deleted TINYINT DEFAULT 0 COMMENT '逻辑删除 0-正常 1-已删除',
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    CONSTRAINT fk_payments_order FOREIGN KEY (order_id) REFERENCES beauty_orders(id) ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='支付记录表';
 
 CREATE INDEX idx_payments_order ON payments(order_id);
+CREATE INDEX idx_payments_payment_no ON payments(payment_no);
+CREATE INDEX idx_payments_pay_time ON payments(pay_time);
 
 -- 备份记录表
 CREATE TABLE backup_records (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    backup_id VARCHAR(32) NOT NULL UNIQUE COMMENT '备份ID',
-    backup_type VARCHAR(20) NOT NULL COMMENT '备份类型 FULL/INCREMENTAL/PARTIAL',
+    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '备份ID',
+    backup_id VARCHAR(32) NOT NULL UNIQUE COMMENT '备份编号',
+    backup_type VARCHAR(20) NOT NULL COMMENT '备份类型 FULL-全量 INCREMENTAL-增量 PARTIAL-部分',
     file_name VARCHAR(100) NOT NULL COMMENT '文件名',
     file_path VARCHAR(255) NOT NULL COMMENT '文件路径',
-    file_size BIGINT COMMENT '文件大小',
-    status VARCHAR(20) DEFAULT 'PENDING' COMMENT '状态 PENDING/IN_PROGRESS/COMPLETED/FAILED/DELETED',
+    file_size BIGINT COMMENT '文件大小(字节)',
+    status VARCHAR(20) DEFAULT 'PENDING' COMMENT '状态 PENDING-待处理 IN_PROGRESS-进行中 COMPLETED-已完成 FAILED-失败 DELETED-已删除',
     tables TEXT COMMENT '备份的表列表(JSON)',
     start_time DATETIME COMMENT '开始时间',
     end_time DATETIME COMMENT '结束时间',
     creator VARCHAR(50) COMMENT '操作人',
     description VARCHAR(200) COMMENT '描述',
     md5_checksum VARCHAR(64) COMMENT 'MD5校验值',
-    create_time DATETIME DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB COMMENT='备份记录表';
+    is_deleted TINYINT DEFAULT 0 COMMENT '逻辑删除 0-正常 1-已删除',
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='备份记录表';
+
+CREATE INDEX idx_backup_records_backup_id ON backup_records(backup_id);
+CREATE INDEX idx_backup_records_status ON backup_records(status);
+CREATE INDEX idx_backup_records_create_time ON backup_records(create_time);
 
 -- 插入测试数据
 INSERT INTO beauty_items (item_name, item_code, price, duration, description) VALUES
